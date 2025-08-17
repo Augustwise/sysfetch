@@ -12,15 +12,16 @@ echo -e "\e[93m
 echo -e "\e[96mProcessor:\e[0m"
 
 if command -v lscpu &> /dev/null; then
-    CPU_MODEL=$(lscpu | grep "Model name" | head -1 | sed 's/Model name://g' | sed 's/^[ \t]*//g' | sed 's/[ \t]*$//g' | tr -s ' ' | sed 's/BIOS.*//g')
+    CPU_MODEL=$(lscpu | grep "Model name" | head -1 | sed 's/Model name://g' | sed 's/^[ \t]*//g' | sed 's/[ \t]*$//g' | tr -s ' ' | sed 's/BIOS.*//g' | sed 's/[[:space:]]*$//')
     CPU_CORES=$(lscpu | grep "Core(s) per socket" | head -1 | sed 's/Core(s) per socket://g' | sed 's/^[ \t]*//g' | sed 's/[ \t]*$//g')
     CPU_SOCKETS=$(lscpu | grep "Socket(s)" | head -1 | sed 's/Socket(s)://g' | sed 's/^[ \t]*//g' | sed 's/[ \t]*$//g')
     PHYSICAL_CORES=$((CPU_CORES * CPU_SOCKETS))
+    CPU_MODEL=$(echo "$CPU_MODEL" | sed 's/[[:space:]]*$//' | tr -s ' ')
     CPU_MODEL="$CPU_MODEL ($PHYSICAL_CORES cores)"
     CPU_ARCHITECTURE=$(lscpu | grep "Architecture" | head -1 | sed 's/Architecture://g' | sed 's/^[ \t]*//g' | sed 's/[ \t]*$//g' | tr -s ' ')
 
 elif [[ -f /proc/cpuinfo ]]; then
-    CPU_MODEL=$(grep "model name" /proc/cpuinfo | head -1 | cut -d':' -f2 | sed 's/^[ \t]*//')
+    CPU_MODEL=$(grep "model name" /proc/cpuinfo | head -1 | cut -d':' -f2 | sed 's/^[ \t]*//' | sed 's/[[:space:]]*$//' | tr -s ' ')
     PHYSICAL_CORES=$(grep "^core id" /proc/cpuinfo | sort -u | wc -l)
     
     if [[ $PHYSICAL_CORES -eq 0 ]]; then
