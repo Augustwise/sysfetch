@@ -53,4 +53,44 @@ printf "   \e[94m%-1s\e[0m %s\n" "Model:" "$CPU_MODEL"
 printf "   \e[94m%-1s\e[0m %s\n" "Architecture:" "$CPU_ARCHITECTURE"
 echo
 
+echo -e "\e[96mGraphics:\e[0m"
+
+if command -v lspci &> /dev/null; then
+    GPU_MODEL=$(lspci | grep -i "vga\|3d\|display" | head -1 | sed 's/.*: //' | sed 's/\[.*\]//' | sed 's/^[ \t]*//' | sed 's/[ \t]*$//' | tr -s ' ')
+    if [[ -z "$GPU_MODEL" ]]; then
+        GPU_MODEL=$(lspci | grep -i "graphics" | head -1 | sed 's/.*: //' | sed 's/\[.*\]//' | sed 's/^[ \t]*//' | sed 's/[ \t]*$//' | tr -s ' ')
+    fi
+
+elif command -v system_profiler &> /dev/null; then
+    GPU_MODEL=$(system_profiler SPDisplaysDataType 2>/dev/null | grep "Chipset Model" | head -1 | sed 's/.*: //' | sed 's/^[ \t]*//' | sed 's/[ \t]*$//' | tr -s ' ')
+
+elif command -v wmic &> /dev/null; then
+    GPU_MODEL=$(wmic path win32_VideoController get name /format:list 2>/dev/null | grep "Name=" | head -1 | sed 's/Name=//' | sed 's/\r//' | sed 's/^[ \t]*//' | sed 's/[ \t]*$//' | tr -s ' ')
+
+elif [[ -d /sys/class/drm ]]; then
+    for card in /sys/class/drm/card*/device; do
+        if [[ -f "$card/vendor" && -f "$card/device" ]]; then
+            VENDOR_ID=$(cat "$card/vendor" 2>/dev/null)
+            DEVICE_ID=$(cat "$card/device" 2>/dev/null)
+            if [[ "$VENDOR_ID" == "0x10de" ]]; then
+                GPU_MODEL="NVIDIA Graphics Card"
+                break
+            elif [[ "$VENDOR_ID" == "0x1002" ]]; then
+                GPU_MODEL="AMD Graphics Card"
+                break
+            elif [[ "$VENDOR_ID" == "0x8086" ]]; then
+                GPU_MODEL="Intel Graphics Card"
+                break
+            fi
+        fi
+    done
+fi
+
+if [[ -z "$GPU_MODEL" ]]; then
+    GPU_MODEL="Unknown"
+fi
+
+printf "   \e[94m%-1s\e[0m %s\n" "Model:" "$GPU_MODEL"
+echo
+
 
