@@ -9,6 +9,38 @@ echo -e "\e[93m
        |___/                                         
 \e[0m"
 
+echo -e "\e[96mOperating System:\e[0m"
+KERNEL=$(uname -sr)
+HOSTNAME=$(hostname)
+
+if command -v ip &> /dev/null; then
+    INTERNAL_IP=$(ip addr | grep "inet " | grep -v "127.0.0.1" | awk '{print $2}' | cut -d'/' -f1 | head -n1)
+elif command -v ifconfig &> /dev/null; then
+    INTERNAL_IP=$(ifconfig | grep "inet " | grep -v "127.0.0.1" | awk '{print $2}' | head -n1)
+else
+    INTERNAL_IP="Unknown"
+fi
+if [[ -z "$INTERNAL_IP" ]]; then
+    INTERNAL_IP="Not available"
+fi
+
+if command -v curl &> /dev/null; then
+    EXTERNAL_IP=$(curl -s icanhazip.com)
+elif command -v wget &> /dev/null; then
+    EXTERNAL_IP=$(wget -qO- icanhazip.com)
+else
+    EXTERNAL_IP="Unknown"
+fi
+if [[ -z "$EXTERNAL_IP" ]]; then
+    EXTERNAL_IP="Not available"
+fi
+
+printf "   \e[94m%-1s\e[0m %s\n" "Kernel:" "$KERNEL"
+printf "   \e[94m%-1s\e[0m %s\n" "Hostname:" "$HOSTNAME"
+printf "   \e[94m%-1s\e[0m %s\n" "Internal IP:" "$INTERNAL_IP"
+printf "   \e[94m%-1s\e[0m %s\n" "External IP:" "$EXTERNAL_IP"
+echo
+
 echo -e "\e[96mProcessor:\e[0m"
 
 if command -v lscpu &> /dev/null; then
