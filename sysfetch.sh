@@ -125,4 +125,38 @@ fi
 printf "   \e[94m%-1s\e[0m %s\n" "Model:" "$GPU_MODEL"
 echo
 
+echo -e "\e[96mStorage:\e[0m"
+
+if command -v lsblk &> /dev/null; then
+    DISKS=$(lsblk -dno NAME,TYPE | grep "disk" | awk '{print "/dev/" $1}' | paste -sd ',' -)
+
+elif command -v fdisk &> /dev/null; then
+    DISKS=$(fdisk -l 2>/dev/null | grep "Disk /dev/" | grep -v "loop\|ram" | awk '{print $2}' | sed 's/:$//' | paste -sd ',' -)
+
+elif command -v diskutil &> /dev/null; then
+    DISKS=$(diskutil list | grep "/dev/disk" | grep "physical" | awk '{print $1}' | paste -sd ',' -)
+
+elif [[ -d /sys/block ]]; then
+    DISK_LIST=()
+    for disk in /sys/block/*/; do
+        DISK_NAME=$(basename "$disk")
+        if [[ ! "$DISK_NAME" =~ ^(loop|ram|sr|md) ]]; then
+            if [[ -f "$disk/size" ]]; then
+                SECTORS=$(cat "$disk/size" 2>/dev/null)
+                if [[ "$SECTORS" -gt 0 ]]; then
+                    DISK_LIST+=("/dev/$DISK_NAME")
+                fi
+            fi
+        fi
+    done
+    DISKS=$(IFS=','; echo "${DISK_LIST[*]}")
+fi
+
+if [[ -z "$DISKS" ]]; then
+    DISKS="Unknown"
+fi
+
+printf "   \e[94m%-1s\e[0m %s\n" "Disks:" "$DISKS"
+echo
+
 
