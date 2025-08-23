@@ -127,36 +127,85 @@ echo
 
 echo -e "\e[96mStorage:\e[0m"
 
+bytes_to_gb() {
+    local bytes=$1
+    if [[ $bytes -gt 0 ]]; then
+        echo "scale=1; $bytes / 1073741824" | bc 2>/dev/null || echo $(($bytes / 1073741824))
+    else
+        echo "0"
+    fi
+}
+
+DISK_TABLE_DATA=""
+
 if command -v lsblk &> /dev/null; then
-    DISKS=$(lsblk -dno NAME,TYPE | grep "disk" | awk '{print "/dev/" $1}' | paste -sd ',' -)
+    while IFS= read -r line; do
+        DISK_NAME=$(echo "$line" | awk '{print $1}')
+        DISK_SIZE_BYTES=$(echo "$line" | awk '{print $2}')
+        if [[ -n "$DISK_NAME" && -n "$DISK_SIZE_BYTES" && "$DISK_SIZE_BYTES" != "0" ]]; then
+            DISK_SIZE_GB=$(bytes_to_gb "$DISK_SIZE_BYTES")
+            DISK_TABLE_DATA+="/dev/$DISK_NAME:${DISK_SIZE_GB}GB\n"
+        fi
+    done < <(lsblk -bdno NAME,SIZE,TYPE | grep "disk" | grep -v "loop\|ram")
 
 elif command -v fdisk &> /dev/null; then
-    DISKS=$(fdisk -l 2>/dev/null | grep "Disk /dev/" | grep -v "loop\|ram" | awk '{print $2}' | sed 's/:$//' | paste -sd ',' -)
+    while IFS= read -r line; do
+        DISK_PATH=$(echo "$line" | awk '{print $2}' | sed 's/:$//')
+        DISK_SIZE_STR=$(echo "$line" | grep -o '[0-9.]*[[:space:]]*[KMGT]B' | head -1)
+        if [[ -n "$DISK_PATH" && -n "$DISK_SIZE_STR" ]]; then
+            if [[ "$DISK_SIZE_STR" =~ ([0-9.]+)[[:space:]]*([KMGT])B ]]; then
+                SIZE_NUM="${BASH_REMATCH[1]}"
+                SIZE_UNIT="${BASH_REMATCH[2]}"
+                case "$SIZE_UNIT" in
+                    "K") DISK_SIZE_GB=$(echo "scale=1; $SIZE_NUM / 1048576" | bc 2>/dev/null || echo "0.0") ;;
+                    "M") DISK_SIZE_GB=$(echo "scale=1; $SIZE_NUM / 1024" | bc 2>/dev/null || echo "$(echo $SIZE_NUM | cut -d. -f1)") ;;
+                    "G") DISK_SIZE_GB="$SIZE_NUM" ;;
+                    "T") DISK_SIZE_GB=$(echo "scale=1; $SIZE_NUM * 1024" | bc 2>/dev/null || echo "$((${SIZE_NUM%.*} * 1024))") ;;
+                esac
+                DISK_TABLE_DATA+="$DISK_PATH:${DISK_SIZE_GB}GB\n"
+            fi
+        fi
+    done < <(fdisk -l 2>/dev/null | grep "Disk /dev/" | grep -v "loop\|ram")
 
 elif command -v diskutil &> /dev/null; then
-    DISKS=$(diskutil list | grep "/dev/disk" | grep "physical" | awk '{print $1}' | paste -sd ',' -)
+    while IFS= read -r disk; do
+        if [[ -n "$disk" ]]; then
+            DISK_INFO=$(diskutil info "$disk" 2>/dev/null)
+            DISK_SIZE_BYTES=$(echo "$DISK_INFO" | grep "Disk Size" | awk '{print $3}' | tr -d '()')
+            if [[ -n "$DISK_SIZE_BYTES" && "$DISK_SIZE_BYTES" != "0" ]]; then
+                DISK_SIZE_GB=$(bytes_to_gb "$DISK_SIZE_BYTES")
+                DISK_TABLE_DATA+="$disk:${DISK_SIZE_GB}GB\n"
+            fi
+        fi
+    done < <(diskutil list | grep "/dev/disk" | grep "physical" | awk '{print $1}')
 
 elif [[ -d /sys/block ]]; then
-    DISK_LIST=()
     for disk in /sys/block/*/; do
         DISK_NAME=$(basename "$disk")
         if [[ ! "$DISK_NAME" =~ ^(loop|ram|sr|md) ]]; then
             if [[ -f "$disk/size" ]]; then
                 SECTORS=$(cat "$disk/size" 2>/dev/null)
                 if [[ "$SECTORS" -gt 0 ]]; then
-                    DISK_LIST+=("/dev/$DISK_NAME")
+                    DISK_SIZE_BYTES=$((SECTORS * 512))
+                    DISK_SIZE_GB=$(bytes_to_gb "$DISK_SIZE_BYTES")
+                    DISK_TABLE_DATA+="/dev/$DISK_NAME:${DISK_SIZE_GB}GB\n"
                 fi
             fi
         fi
     done
-    DISKS=$(IFS=','; echo "${DISK_LIST[*]}")
 fi
 
-if [[ -z "$DISKS" ]]; then
-    DISKS="Unknown"
+if [[ -n "$DISK_TABLE_DATA" ]]; then
+    printf "   \e[94m%-12s %-10s\e[0m\n" "Disk" "Size"
+    printf "   \e[90m%-12s %-10s\e[0m\n" "────────────" "──────────"
+    echo -e "$DISK_TABLE_DATA" | while IFS=':' read -r disk_name disk_size; do
+        if [[ -n "$disk_name" && -n "$disk_size" ]]; then
+            printf "   %-12s %-10s\n" "$disk_name" "$disk_size"
+        fi
+    done
+else
+    printf "   \e[94m%-1s\e[0m %s\n" "Disks:" "Unknown"
 fi
-
-printf "   \e[94m%-1s\e[0m %s\n" "Disks:" "$DISKS"
 echo
 
 
