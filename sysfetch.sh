@@ -206,6 +206,53 @@ if [[ -n "$DISK_TABLE_DATA" ]]; then
 else
     printf "   \e[94m%-1s\e[0m %s\n" "Disks:" "Unknown"
 fi
-echo
+echo -e "\e[96mMemory:\e[0m"
 
+get_memory_data() {
+    if [[ -f /proc/meminfo ]]; then
+        local total_kb=$(grep "MemTotal:" /proc/meminfo | awk '{print $2}')
+        local available_kb=$(grep "MemAvailable:" /proc/meminfo | awk '{print $2}')
+        [[ -z "$available_kb" ]] && available_kb=$(grep "MemFree:" /proc/meminfo | awk '{print $2}')
+        local used_kb=$((total_kb - available_kb))
+        echo "$used_kb $available_kb $total_kb"
+    elif command -v vm_stat &> /dev/null; then
+        local page_size=$(vm_stat | grep "page size" | awk '{print $8}')
+        local free_pages=$(vm_stat | grep "Pages free" | awk '{print $3}' | tr -d '.')
+        local total_mem=$(sysctl -n hw.memsize 2>/dev/null)
+        local total_kb=$((total_mem / 1024))
+        local free_kb=$((free_pages * page_size / 1024))
+        local used_kb=$((total_kb - free_kb))
+        echo "$used_kb $free_kb $total_kb"
+    else
+        echo "0 0 0"
+    fi
+}
+
+draw_bar() {
+    local used=$1 total=$2 width=20
+    local filled=$((used * width / total))
+    local bar=""
+    for ((i=0; i<width; i++)); do
+        if [[ $i -lt $filled ]]; then
+            bar+="█"
+        else
+            bar+="░"
+        fi
+    done
+    echo "$bar"
+}
+
+printf "   \e[94m%-8s\e[0m " "Total:"
+while true; do
+    read used_kb free_kb total_kb <<< $(get_memory_data)
+    used_gb=$(echo "scale=2; $used_kb / 1048576" | bc 2>/dev/null || echo "0.00")
+    free_gb=$(echo "scale=2; $free_kb / 1048576" | bc 2>/dev/null || echo "0.00")
+    total_gb=$(echo "scale=2; $total_kb / 1048576" | bc 2>/dev/null || echo "0.00")
+    percent=$((used_kb * 100 / total_kb))
+    bar=$(draw_bar $used_kb $total_kb)
+    
+    printf "\r   \e[94m%-8s\e[0m %s GB  \e[94m%-8s\e[0m %s GB  \e[90m[\e[92m%s\e[90m] %s%%\e[0m" \
+           "Total:" "$total_gb" "Free:" "$free_gb" "$bar" "$percent"
+    sleep 0.7
+done
 
