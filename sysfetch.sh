@@ -9,7 +9,7 @@ echo -e "\e[93m
        |___/                                         
 \e[0m"
 
-echo -n -e "\e[96mDo you want to export the system information to a text file? (y/n): \e[0m"
+echo -n -e "\e[31mDo you want to export the system information to a text file? (y/n): \e[0m"
 read -r EXPORT_CHOICE
 echo
 
@@ -70,6 +70,53 @@ export_info "   Internal IP: $INTERNAL_IP"
 
 printf "   \e[94m%-1s\e[0m %s\n" "External IP:" "$EXTERNAL_IP"
 export_info "   External IP: $EXTERNAL_IP"
+
+echo
+export_info ""
+
+echo -e "\e[96mUptime:\e[0m"
+export_info "Uptime:"
+
+if command -v uptime &> /dev/null; then
+    UPTIME_INFO=$(uptime -p 2>/dev/null | sed 's/^up //')
+    if [[ -z "$UPTIME_INFO" ]]; then
+        UPTIME_RAW=$(uptime | awk '{print $3,$4,$5}')
+        if [[ "$UPTIME_RAW" =~ ([0-9]+)[[:space:]]+day ]]; then
+            DAYS="${BASH_REMATCH[1]}"
+            HOURS_MINUTES=$(echo "$UPTIME_RAW" | sed 's/[0-9]* day[s]* //')
+            if [[ "$HOURS_MINUTES" =~ ([0-9]+):([0-9]+) ]]; then
+                HOURS="${BASH_REMATCH[1]}"
+                MINUTES="${BASH_REMATCH[2]}"
+                UPTIME_INFO="$DAYS day(s) $HOURS hour(s) $MINUTES minute(s)"
+            fi
+        elif [[ "$UPTIME_RAW" =~ ([0-9]+):([0-9]+) ]]; then
+            HOURS="${BASH_REMATCH[1]}"
+            MINUTES="${BASH_REMATCH[2]}"
+            UPTIME_INFO="$HOURS hour(s) $MINUTES minute(s)"
+        elif [[ "$UPTIME_RAW" =~ ([0-9]+)min ]]; then
+            MINUTES="${BASH_REMATCH[1]}"
+            UPTIME_INFO="$MINUTES minute(s)"
+        fi
+    fi
+elif [[ -f /proc/uptime ]]; then
+    UPTIME_SECONDS=$(awk '{print int($1)}' /proc/uptime)
+    DAYS=$((UPTIME_SECONDS / 86400))
+    HOURS=$(( (UPTIME_SECONDS % 86400) / 3600 ))
+    MINUTES=$(( (UPTIME_SECONDS % 3600) / 60 ))
+
+    if [[ $DAYS -gt 0 ]]; then
+        UPTIME_INFO="$DAYS day(s) $HOURS hour(s) $MINUTES minute(s)"
+    elif [[ $HOURS -gt 0 ]]; then
+        UPTIME_INFO="$HOURS hour(s) $MINUTES minute(s)"
+    else
+        UPTIME_INFO="$MINUTES minute(s)"
+    fi
+else
+    UPTIME_INFO="Unknown"
+fi
+
+printf "   \e[94m%-1s\e[0m %s\n" "Uptime:" "$UPTIME_INFO"
+export_info "   Uptime: $UPTIME_INFO"
 
 echo
 export_info ""
@@ -305,14 +352,19 @@ draw_bar() {
 printf "   \e[94m%-8s\e[0m " "Total:"
 while true; do
     read used_kb free_kb total_kb <<< $(get_memory_data)
-    used_gb=$(echo "scale=2; $used_kb / 1048576" | bc 2>/dev/null || echo "0.00")
-    free_gb=$(echo "scale=2; $free_kb / 1048576" | bc 2>/dev/null || echo "0.00")
-    total_gb=$(echo "scale=2; $total_kb / 1048576" | bc 2>/dev/null || echo "0.00")
+    used_gb=$(printf "%0.2f" $(echo "scale=2; $used_kb / 1048576" | bc 2>/dev/null || echo "0.00"))
+    free_gb=$(printf "%0.2f" $(echo "scale=2; $free_kb / 1048576" | bc 2>/dev/null || echo "0.00"))
+    total_gb=$(printf "%0.2f" $(echo "scale=2; $total_kb / 1048576" | bc 2>/dev/null || echo "0.00"))
     percent=$((used_kb * 100 / total_kb))
     bar=$(draw_bar $used_kb $total_kb)
     
-    printf "\r   \e[94m%-8s\e[0m %s GB  \e[94m%-8s\e[0m %s GB  \e[90m[\e[92m%s\e[90m] %s%%\e[0m" \
-           "Total:" "$total_gb" "Free:" "$free_gb" "$bar" "$percent"
+    if [[ $percent -gt 90 ]]; then
+        printf "\r   \e[94m%-8s\e[0m %s GB  \e[94m%-8s\e[0m %s GB  \e[90m[\e[92m%s\e[90m] \e[31m\e[40m%s%%\e[0m" \
+               "Total:" "$total_gb" "Free:" "$free_gb" "$bar" "$percent"
+    else
+        printf "\r   \e[94m%-8s\e[0m %s GB  \e[94m%-8s\e[0m %s GB  \e[90m[\e[92m%s\e[90m] %s%%\e[0m" \
+               "Total:" "$total_gb" "Free:" "$free_gb" "$bar" "$percent"
+    fi
     sleep 0.7
 done
 
