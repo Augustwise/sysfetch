@@ -315,56 +315,26 @@ fi
 
 echo -e "\e[96mMemory:\e[0m"
 
-get_memory_data() {
-    if [[ -f /proc/meminfo ]]; then
-        local total_kb=$(grep "MemTotal:" /proc/meminfo | awk '{print $2}')
-        local available_kb=$(grep "MemAvailable:" /proc/meminfo | awk '{print $2}')
-        [[ -z "$available_kb" ]] && available_kb=$(grep "MemFree:" /proc/meminfo | awk '{print $2}')
-        local used_kb=$((total_kb - available_kb))
-        echo "$used_kb $available_kb $total_kb"
-    elif command -v vm_stat &> /dev/null; then
-        local page_size=$(vm_stat | grep "page size" | awk '{print $8}')
-        local free_pages=$(vm_stat | grep "Pages free" | awk '{print $3}' | tr -d '.')
-        local total_mem=$(sysctl -n hw.memsize 2>/dev/null)
-        local total_kb=$((total_mem / 1024))
-        local free_kb=$((free_pages * page_size / 1024))
-        local used_kb=$((total_kb - free_kb))
-        echo "$used_kb $free_kb $total_kb"
-    else
-        echo "0 0 0"
-    fi
-}
 
-draw_bar() {
-    local used=$1 total=$2 width=20
-    local filled=$((used * width / total))
-    local bar=""
-    for ((i=0; i<width; i++)); do
-        if [[ $i -lt $filled ]]; then
-            bar+="█"
-        else
-            bar+="░"
-        fi
-    done
-    echo "$bar"
-}
+total_kb=0
+available_kb=0
 
-printf "   \e[94m%-8s\e[0m " "Total:"
-while true; do
-    read used_kb free_kb total_kb <<< $(get_memory_data)
-    used_gb=$(printf "%0.2f" $(echo "scale=2; $used_kb / 1048576" | bc 2>/dev/null || echo "0.00"))
-    free_gb=$(printf "%0.2f" $(echo "scale=2; $free_kb / 1048576" | bc 2>/dev/null || echo "0.00"))
-    total_gb=$(printf "%0.2f" $(echo "scale=2; $total_kb / 1048576" | bc 2>/dev/null || echo "0.00"))
-    percent=$((used_kb * 100 / total_kb))
-    bar=$(draw_bar $used_kb $total_kb)
-    
-    if [[ $percent -gt 90 ]]; then
-        printf "\r   \e[94m%-8s\e[0m %s GB  \e[94m%-8s\e[0m %s GB  \e[90m[\e[92m%s\e[90m] \e[31m\e[40m%s%%\e[0m" \
-               "Total:" "$total_gb" "Free:" "$free_gb" "$bar" "$percent"
-    else
-        printf "\r   \e[94m%-8s\e[0m %s GB  \e[94m%-8s\e[0m %s GB  \e[90m[\e[92m%s\e[90m] %s%%\e[0m" \
-               "Total:" "$total_gb" "Free:" "$free_gb" "$bar" "$percent"
-    fi
-    sleep 0.7
-done
+if [[ -f /proc/meminfo ]]; then
+    total_kb=$(grep -E "^MemTotal:" /proc/meminfo | awk '{print $2}')
+    available_kb=$(grep -E "^MemAvailable:" /proc/meminfo | awk '{print $2}')
+    [[ -z "$available_kb" ]] && available_kb=$(grep -E "^MemFree:" /proc/meminfo | awk '{print $2}')
+elif command -v vm_stat &> /dev/null; then
+    page_size=$(vm_stat | awk '/page size/ {print $8}')
+    free_pages=$(vm_stat | awk '/Pages free/ {print $3}' | tr -d '.')
+    total_mem=$(sysctl -n hw.memsize 2>/dev/null)
+    total_kb=$((total_mem / 1024))
+    available_kb=$((free_pages * page_size / 1024))
+fi
+
+total_gb=$(awk -v kb="$total_kb" 'BEGIN { printf "%.2f", (kb/1048576) }')
+free_gb=$(awk -v kb="$available_kb" 'BEGIN { printf "%.2f", (kb/1048576) }')
+free_pct=$(awk -v avail="$available_kb" -v total="$total_kb" 'BEGIN { if (total>0) printf "%.2f", (avail*100)/total; else printf "0.00" }')
+
+printf "   Total RAM: %sGB. Free: %sGB (%s%%).\n" "$total_gb" "$free_gb" "$free_pct"
+export_info "   Total RAM: ${total_gb}GB. Free: ${free_gb}GB (${free_pct}%)."
 
