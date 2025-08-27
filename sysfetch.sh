@@ -338,3 +338,40 @@ free_pct=$(awk -v avail="$available_kb" -v total="$total_kb" 'BEGIN { if (total>
 printf "   Total RAM: %sGB. Free: %sGB (%s%%).\n" "$total_gb" "$free_gb" "$free_pct"
 export_info "   Total RAM: ${total_gb}GB. Free: ${free_gb}GB (${free_pct}%)."
 
+echo
+export_info ""
+
+echo -e "\e[96mNetwork Latency:\e[0m"
+export_info "Network Latency:"
+
+ping_test() {
+    local target=$1
+    local count=3
+
+    if command -v ping &> /dev/null; then
+        if ping -c $count "$target" &> /dev/null; then
+            local ping_output=$(ping -c $count "$target" 2>/dev/null)
+            local avg_time=$(echo "$ping_output" | grep "rtt min/avg/max/mdev" | awk -F'/' '{print $5}')
+
+            if [[ -n "$avg_time" && "$avg_time" != "0.000" ]]; then
+                printf "%.2f" "$avg_time"
+            else
+                echo "Failed"
+            fi
+        else
+            echo "Failed"
+        fi
+    else
+        echo "N/A"
+    fi
+}
+
+GOOGLE_LATENCY=$(ping_test "8.8.8.8")
+CLOUDFLARE_LATENCY=$(ping_test "1.1.1.1")
+
+printf "   \e[94mG\e[91mo\e[93mo\e[94mg\e[92ml\e[91me\e[0m \e[94mDNS (8.8.8.8):\e[0m %s ms\n" "$GOOGLE_LATENCY"
+export_info "   Google DNS (8.8.8.8): $GOOGLE_LATENCY ms"
+
+printf "   \e[33mCloudflare\e[0m \e[94mDNS (1.1.1.1):\e[0m %s ms\n" "$CLOUDFLARE_LATENCY"
+export_info "   Cloudflare DNS (1.1.1.1): $CLOUDFLARE_LATENCY ms"
+
