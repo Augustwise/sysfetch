@@ -305,14 +305,12 @@ else
 fi
 
 export_info ""
+
 if [[ -n "$EXPORT_FILE" ]]; then
     export_info "==========================================="
-    export_info "Export completed successfully!"
-    export_info "System information saved to: $EXPORT_FILE"
     echo -e "\e[92mExport completed! System information saved to: $EXPORT_FILE\e[0m"
     echo
 fi
-
 echo -e "\e[96mMemory:\e[0m"
 
 
@@ -344,6 +342,16 @@ export_info ""
 echo -e "\e[96mNetwork Latency:\e[0m"
 export_info "Network Latency:"
 
+spinner_animation() {
+    local spin_chars="/-\|"
+    local i=0
+    while true; do
+        printf "\r${spin_chars:$i:1} Measuring network latency..."
+        i=$(( (i+1) % 4 ))
+        sleep 0.1
+    done
+}
+
 ping_test() {
     local target=$1
     local count=3
@@ -366,8 +374,14 @@ ping_test() {
     fi
 }
 
+spinner_animation &
+SPINNER_PID=$!
+
 GOOGLE_LATENCY=$(ping_test "8.8.8.8")
 CLOUDFLARE_LATENCY=$(ping_test "1.1.1.1")
+
+kill $SPINNER_PID 2>/dev/null
+printf "\r%s\n" "Network latency measurement complete."
 
 printf "   \e[94mG\e[91mo\e[93mo\e[94mg\e[92ml\e[91me\e[0m \e[94mDNS (8.8.8.8):\e[0m %s ms\n" "$GOOGLE_LATENCY"
 export_info "   Google DNS (8.8.8.8): $GOOGLE_LATENCY ms"
