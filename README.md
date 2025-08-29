@@ -4,7 +4,14 @@ A small, portable system information script written in [`bash`](sysfetch.sh:1) t
 
 ### Features
 
-...
+1. Operating system information (kernel, hostname, internal and external IP)
+2. System uptime
+3. Processor information (model, architecture, core count)
+4. Graphics card information
+5. Storage information (disk list and sizes)
+6. Memory information (total RAM, free memory)
+7. Network latency to Google and Cloudflare DNS (only with `-i` flag)
+8. Export information to text file (only with `-e` flag)
 
 ### Requirements
 
@@ -23,11 +30,11 @@ A small, portable system information script written in [`bash`](sysfetch.sh:1) t
 
 #### Examples:
 
-| Action                      | Command                      |
-|-----------------------------|------------------------------|
-| Export only                 | `./sysfetch.sh -e`           |
-| Check internet latency only | `./sysfetch.sh -i`           |
-| Export and check latency    | `./sysfetch.sh -e -i`        |
+| Action                      | Command               |
+| --------------------------- | --------------------- |
+| Export only                 | `./sysfetch.sh -e`    |
+| Check internet latency only | `./sysfetch.sh -i`    |
+| Export and check latency    | `./sysfetch.sh -e -i` |
 
 ### Notes
 
