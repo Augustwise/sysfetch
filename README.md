@@ -24,8 +24,8 @@ Usage
 
 Flags
 
-- **-e**: Export the system information to a timestamped text file (replaces the interactive prompt).
-- **-i**: Measure internet latency to common DNS servers (runs the network latency checks).
+- **-e**: Export the system information to a timestamped text file.
+- **-i**: Measure internet latency to Google and Cloudflare DNS.
 
 Examples
 
