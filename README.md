@@ -3,6 +3,7 @@
 A small, portable system information script written in [`bash`](sysfetch.sh:1) that prints key details about your machine in a concise, colored output.
 
 Features
+
 - Shows kernel and hostname.
 - Detects internal and external IP addresses (uses `ip`, `ifconfig`, `curl` or `wget` where available).
 - Displays CPU model, core count and architecture (supports `lscpu`, `/proc/cpuinfo` and macOS `sysctl` fallbacks).
@@ -12,14 +13,27 @@ Features
 - Minimal dependencies and graceful fallbacks when commands are not available.
 
 Requirements
+
 - bash
 
 Usage
+
 1. Make the script executable
    `chmod 755 ./sysfetch.sh`
 2. Run the script: `./sysfetch.sh`
 
+Flags
+
+- **-e**: Export the system information to a timestamped text file (replaces the interactive prompt).
+- **-i**: Measure internet latency to common DNS servers (runs the network latency checks).
+
+Examples
+
+- Export only: `./sysfetch.sh -e`
+- Check internet latency only: `./sysfetch.sh -i`
+- Export and check latency: `./sysfetch.sh -e -i`
+
 Notes
+
 - The script tries several platform-specific commands and will display "Unknown" or "Not available" when data sources are missing.
 - Colors and Unicode block characters are used for visual output; if your terminal does not support ANSI colors or Unicode blocks, the display may be less polished.
-
