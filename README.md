@@ -4,13 +4,7 @@ A small, portable system information script written in [`bash`](sysfetch.sh:1) t
 
 Features
 
-- Shows kernel and hostname.
-- Detects internal and external IP addresses (uses `ip`, `ifconfig`, `curl` or `wget` where available).
-- Displays CPU model, core count and architecture (supports `lscpu`, `/proc/cpuinfo` and macOS `sysctl` fallbacks).
-- Attempts to detect GPU model across Linux, macOS and Windows (`lspci`, `system_profiler`, `wmic` where available) — with reasonable fallbacks.
-- Lists disk devices and sizes (uses `lsblk`, `fdisk`, `diskutil` or `/sys/block`).
-- Shows live memory usage with a simple progress bar (reads `/proc/meminfo` or uses macOS `vm_stat`).
-- Minimal dependencies and graceful fallbacks when commands are not available.
+...
 
 Requirements
 
@@ -27,11 +21,13 @@ Flags
 - **-e**: Export the system information to a timestamped text file.
 - **-i**: Measure internet latency to Google and Cloudflare DNS.
 
-Examples
+Examples:
 
-- Export only: `./sysfetch.sh -e`
-- Check internet latency only: `./sysfetch.sh -i`
-- Export and check latency: `./sysfetch.sh -e -i`
+| Action                      | Command                      |
+|-----------------------------|------------------------------|
+| Export only                 | `./sysfetch.sh -e`           |
+| Check internet latency only | `./sysfetch.sh -i`           |
+| Export and check latency    | `./sysfetch.sh -e -i`        |
 
 Notes
 
