@@ -1,5 +1,9 @@
 #!/bin/bash
 
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+export LC_MESSAGES=en_US.UTF-8
+
 echo -e "\e[93m
                       __          _            _     
  ___   _   _   ___   / _|   ___  | |_    ___  | |__  
